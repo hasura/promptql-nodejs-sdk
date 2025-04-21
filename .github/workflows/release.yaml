@@ -6,7 +6,7 @@ on:
 jobs:
   tests:
     uses: ./.github/workflows/test.yaml
-    
+
   publish:
     runs-on: ubuntu-latest
     steps:
@@ -14,7 +14,7 @@ jobs:
       # Setup .npmrc file to publish to npm
       - uses: actions/setup-node@v4
         with:
-          node-version-file: .nvmrc
+          node-version: 22
           registry-url: 'https://registry.npmjs.org'
           cache: 'npm'
       - run: npm ci
