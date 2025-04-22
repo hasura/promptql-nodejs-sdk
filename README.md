@@ -77,7 +77,10 @@ The [Natural Language Query API](https://hasura.io/docs/promptql/promptql-apis/n
 #### Non-Streaming
 
 ```ts
-function query(body: PromptQLQueryRequest, queryOptions?: FetchOptions) => Promise<QueryResponse>
+function query(
+    body: PromptQLQueryRequest, 
+    queryOptions?: FetchOptions
+) => Promise<QueryResponse>
 ```
 
 #### Streaming
@@ -86,7 +89,11 @@ The streaming response sends chunks of data in Server-Sent Events (SSE) format.
 If the callback isn't set the client returns the raw response and you need to handle the response manually.
 
 ```ts
-function queryStream: (body: PromptQLQueryRequest, callback?: (data: QueryResponseChunk) => void | Promise<void>, queryOptions?: FetchOptions) Promise<Response>;
+function queryStream(
+    body: PromptQLQueryRequest, 
+    callback?: (data: QueryResponseChunk) => void | Promise<void>, 
+    queryOptions?: FetchOptions
+) Promise<Response>;
 ```
 
 Example:
@@ -102,7 +109,7 @@ client
         ],
     },
     async (chunk) => {
-        console.error(chunk);
+        console.log(chunk);
     },
 );
 ```
@@ -112,5 +119,16 @@ client
 Execute a PromptQL program with your data.
 
 ```ts
-function executeProgram: (body: PromptQLExecuteRequest, executeOptions?: FetchOptions) Promise<PromptQlExecutionResult>;
+function executeProgram(
+    body: PromptQLExecuteRequest, executeOptions?: FetchOptions) Promise<PromptQlExecutionResult>;
+```
+
+## Development
+
+### Generate types
+
+Use the following command to update TypeScript types of PromptQL APIs from OpenAPI document.
+
+```bash
+npm run openapi:ts
 ```
