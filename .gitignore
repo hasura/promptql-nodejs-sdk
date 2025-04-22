@@ -21,6 +21,3 @@ yarn-error.log*
 # Misc
 .DS_Store
 *.pem
-
-# Ignore development dependencies to fix Github Action issues.
-package-lock.json
