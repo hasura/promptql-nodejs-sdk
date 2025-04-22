@@ -7,12 +7,12 @@ test('decodeJson', (t) => {
       input:
         'data: {"message":"- Track something","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}',
       expected: {
-        message: '- Track access',
+        message: '- Track something',
         plan: null,
         code: null,
         code_output: null,
         code_error: null,
-        type: 'something',
+        type: 'assistant_action_chunk',
         index: 0,
       },
     },

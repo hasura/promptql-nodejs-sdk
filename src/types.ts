@@ -31,9 +31,9 @@ export type PromptQLClientConfig = {
   /**
    * DDN configuration including URL and headers.
    *
-   * @type {(DdnConfig | (() => Promise<DdnConfig>))}
+   * @type {(DdnConfig | (() => DdnConfig | Promise<DdnConfig>))}
    */
-  ddn: DdnConfig | (() => Promise<DdnConfig>);
+  ddn: DdnConfig | (() => DdnConfig | Promise<DdnConfig>);
 
   /**
    * The optional base URL of PromptQL API. The default value is the endpoint to the public DDN.

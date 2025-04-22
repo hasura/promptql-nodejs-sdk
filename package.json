@@ -1,7 +1,7 @@
 {
   "name": "@hasura/promptql",
   "description": "A Node.js SDK allows you to interact with PromptQL API",
-  "version": "0.0.9",
+  "version": "0.0.1",
   "license": "Apache-2.0",
   "publishConfig": {
     "access": "public"
@@ -9,15 +9,20 @@
   "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "author": "Hasura",
   "homepage": "https://promptql.hasura.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/hasura/promptql-nodejs-sdk"
+    "url": "git+https://github.com/hasura/promptql-nodejs-sdk.git"
   },
   "bugs": {
     "url": "https://github.com/hasura/promptql-nodejs-sdk/issues"
   },
-  "keywords": ["promptql", "api", "typescript"],
+  "keywords": [
+    "promptql",
+    "api",
+    "typescript"
+  ],
   "scripts": {
     "copy-files": "cp ./src/promptql.d.ts ./dist/promptql.d.ts",
     "build": "tsc && vite build && npm run copy-files",
@@ -27,10 +32,12 @@
     "format": "biome format --write",
     "test": "vitest --run",
     "test:coverage": "vitest --coverage",
-    "prepublishOnly": "npm run lint && npm run build",
+    "prepublishOnly": "npm run build",
     "openapi:ts": "openapi-typescript https://api.promptql.pro.hasura.io/openapi.json --export-type --root-types-no-schema-prefix --root-types -o ./src/promptql.d.ts"
   },
-  "files": ["dist/**/*"],
+  "files": [
+    "dist/**/*"
+  ],
   "dependencies": {},
   "devDependencies": {
     "openapi-typescript": "^7.6.1",

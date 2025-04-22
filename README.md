@@ -25,7 +25,7 @@ Create the PromptQL client with required configurations:
 ```ts
 import { createPromptQLClient } from '@hasura/promptql';
 
-const promptqlClient = createPromptQLClient({
+const client = createPromptQLClient({
     apiKey: '<your-promptql-api-key>',
     ddn: {
         url: '<your-project-endpoint>',
@@ -33,10 +33,18 @@ const promptqlClient = createPromptQLClient({
             'Authorization': '<credential>'
         }
     },
+    // You can define a lazy function for the ddn options.
+    //
+    // ddn: () => {{ 
+    //     url: '<your-project-endpoint>',
+    //     headers: {
+    //         'Authorization': '<credential>'
+    //     }
+    // }}  
 });
 
 const runQuery = (text: string) => {
-    return appContext.promptqlClient.query({
+    return client.query({
         artifacts: [],
         interactions: [
             {
