@@ -18,11 +18,7 @@
   "bugs": {
     "url": "https://github.com/hasura/promptql-nodejs-sdk/issues"
   },
-  "keywords": [
-    "promptql",
-    "api",
-    "typescript"
-  ],
+  "keywords": ["promptql", "api", "typescript"],
   "scripts": {
     "copy-files": "cp ./src/promptql.d.ts ./dist/promptql.d.ts",
     "build": "tsc && vite build && npm run copy-files",
@@ -35,16 +31,16 @@
     "prepublishOnly": "npm run build",
     "openapi:ts": "openapi-typescript https://api.promptql.pro.hasura.io/openapi.json --export-type --root-types-no-schema-prefix --root-types -o ./src/promptql.d.ts"
   },
-  "files": [
-    "dist/**/*"
-  ],
-  "dependencies": {},
+  "files": ["dist/**/*"],
+  "dependencies": {
+    "@opentelemetry/api": "*"
+  },
   "devDependencies": {
-    "openapi-typescript": "^7.6.1",
+    "@biomejs/biome": "1.9.4",
     "@types/node": "^22.14.1",
     "@vitest/coverage-v8": "^3.1.1",
-    "@biomejs/biome": "1.9.4",
     "changelogen": "^0.6.1",
+    "openapi-typescript": "^7.6.1",
     "typescript": "^5.8.3",
     "vite": "^6.2.6",
     "vite-plugin-dts": "^4.5.3",

@@ -4,9 +4,7 @@ import { createQueryChunks } from './query-chunks';
 import type { Artifact } from './types';
 
 describe('PromptQLClient', () => {
-  const apiKey = getEnv('PROMPTQL_API_KEY');
-  const ddnBaseUrl = getEnv('HASURA_DDN_BASE_URL');
-  const ddnAuthToken = getEnv('DDN_AUTH_TOKEN');
+  const client = createTestClient();
   const expectedArtifact = [
     {
       id: 1,
@@ -29,16 +27,6 @@ describe('PromptQLClient', () => {
       (artifacts[0]?.data as Record<string, any>[]).sort((a, b) => a.id - b.id),
     ).toMatchObject(expectedArtifact);
   };
-
-  const client = createPromptQLClient({
-    apiKey,
-    ddn: {
-      url: ddnBaseUrl,
-      headers: {
-        Authorization: ddnAuthToken,
-      },
-    },
-  });
 
   it('queryAndExecuteProgram', async () => {
     let code = '';
@@ -96,6 +84,55 @@ describe('PromptQLClient', () => {
     assertArtifacts(chunks.getModifiedArtifacts());
   });
 });
+
+describe('PromptQLClientError', () => {
+  const client = createTestClient();
+
+  it('queryValidationError', async () => {
+    await expect(() =>
+      client.query({
+        interactions: [],
+      }),
+    ).rejects.toThrowError(
+      'require at least 1 interaction with non-empty user message content',
+    );
+  });
+
+  it('queryApiError', async () => {
+    await expect(() =>
+      client.query({
+        interactions: [
+          {
+            user_message: {
+              text: 'what can you do?',
+            },
+            assistant_actions: [
+              {
+                code_output: 'test',
+              },
+            ],
+          },
+        ],
+      }),
+    ).rejects.toThrowError();
+  });
+});
+
+const createTestClient = () => {
+  const apiKey = getEnv('PROMPTQL_API_KEY');
+  const ddnBaseUrl = getEnv('HASURA_DDN_BASE_URL');
+  const ddnAuthToken = getEnv('DDN_AUTH_TOKEN');
+
+  return createPromptQLClient({
+    apiKey,
+    ddn: {
+      url: ddnBaseUrl,
+      headers: {
+        Authorization: ddnAuthToken,
+      },
+    },
+  });
+};
 
 const getEnv = (name: string): string => {
   const value = process.env[name];
