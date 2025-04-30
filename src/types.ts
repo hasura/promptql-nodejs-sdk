@@ -14,6 +14,10 @@ import type {
   ValidationError,
   VisualizationArtifact,
 } from './promptql';
+
+// LlmConfig represents a union type of LLM config.
+export type LlmConfig = HasuraLlmConfig | ApiOpenAiConfig | ApiAnthropicConfig;
+
 /**
  * PromptQL client config contains common settings to connect the PromptQL API.
  *
@@ -50,11 +54,18 @@ export type PromptQLClientConfig = {
   headers?: IncomingHttpHeaders;
 
   /**
-   * Configuration for the main LLM provider.
+   * Default LLM provider configuration for the natural language API.
    *
-   * @type {?(HasuraLlmConfig | ApiOpenAiConfig | ApiAnthropicConfig)}
+   * @type {?(LlmConfig)}
    */
-  llm?: HasuraLlmConfig | ApiOpenAiConfig | ApiAnthropicConfig;
+  llm?: LlmConfig;
+
+  /**
+   * Default AI Primitives LLM provider configuration.
+   *
+   * @type {?(LlmConfig)}
+   */
+  aiPrimitivesLlm?: LlmConfig;
 
   /**
    * An [IANA timezone](https://data.iana.org/time-zones/tzdb-2021a/zone1970.tab) for interpreting time-based queries. Default is the system timezone.
@@ -62,6 +73,19 @@ export type PromptQLClientConfig = {
    * @type {?string}
    */
   timezone?: string;
+
+  /**
+   * Use a custom http client function. Default is fetch.
+   *
+   * @type {?(
+   *     input: string | URL | Request,
+   *     init?: RequestInit,
+   *   ) => Promise<Response>}
+   */
+  fetch?: (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => Promise<Response>;
 };
 
 /**
@@ -136,15 +160,14 @@ export type PromptQLQueryRequest = Omit<
    *
    * @type {?string}
    */
-  readonly timezone?: string;
+  timezone?: string;
 
   /**
    * DDN configuration including URL and headers. Used to override the default client settings.
    *
-   * @readonly
    * @type {?Partial<DdnConfig>}
    */
-  readonly ddn?: Partial<DdnConfig>;
+  ddn?: Partial<DdnConfig>;
 };
 
 /**
@@ -161,14 +184,30 @@ export type FetchOptions = Omit<RequestInit, 'method' | 'body'>;
  * @export
  * @typedef {PromptQLExecuteRequest}
  */
-export type PromptQLExecuteRequest = Omit<ExecuteRequest, 'ddn' | 'version'> & {
+export type PromptQLExecuteRequest = Omit<
+  ExecuteRequest,
+  'ddn' | 'version' | 'ai_primitives_llm' | 'artifacts'
+> & {
   /**
    * DDN configuration including URL and headers. Used to override the default client settings.
    *
-   * @readonly
    * @type {?Partial<DdnConfig>}
    */
-  readonly ddn?: Partial<DdnConfig>;
+  ddn?: Partial<DdnConfig>;
+
+  /**
+   * Ai Primitives LLM to be used for executing program.
+   *
+   * @type {?LlmConfig}
+   */
+  ai_primitives_llm?: LlmConfig;
+
+  /**
+   * Embedded artifacts for the program.
+   *
+   * @type {?Artifact[]}
+   */
+  artifacts?: Artifact[];
 };
 
 /**

@@ -3,9 +3,20 @@ name: Unit tests
 on:
   workflow_call:
   pull_request:
+    paths:
+      - "src/**.ts"
+      - "*.json"
+      - "vite.config.ts"
+      - ".github/workflows/*.yaml"
+
   push:
     branches:
       - "main"
+    paths:
+      - "src/**.ts"
+      - "*.json"
+      - "vite.config.ts"
+      - ".github/workflows/*.yaml"
 
 jobs:
   lint-test:

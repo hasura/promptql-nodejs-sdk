@@ -1,15 +1,18 @@
 import type {
   DdnConfig,
+  ExecuteRequest,
   PromptQlExecutionResult,
+  QueryRequest,
   QueryResponse,
   QueryResponseChunk,
 } from './promptql';
-import type {
-  FetchOptions,
-  PromptQLClient,
-  PromptQLClientConfig,
-  PromptQLExecuteRequest,
-  PromptQLQueryRequest,
+import {
+  type FetchOptions,
+  type PromptQLClient,
+  type PromptQLClientConfig,
+  PromptQLError,
+  type PromptQLExecuteRequest,
+  type PromptQLQueryRequest,
 } from './types';
 import { DATA_CHUNK_PREFIX, decodeResponseJson } from './utils';
 
@@ -17,11 +20,13 @@ import { DATA_CHUNK_PREFIX, decodeResponseJson } from './utils';
  * Description placeholder
  *
  * @param {PromptQLClientConfig} options
- * @returns {{ client: any; query: (body: any, queryOptions?: Omit<FetchOptions<operations>, "body">) => Promise<QueryResponse>; executeProgram: (body: any, executeOptions?: Omit<FetchOptions<operations>, "body">) => Promise<...>; }}
+ * @returns {PromptQLClient}
  */
 export const createPromptQLClient = (
   options: PromptQLClientConfig,
 ): PromptQLClient => {
+  const fetchFn = typeof options.fetch === 'function' ? options.fetch : fetch;
+
   const baseUrl = !options.baseUrl
     ? 'https://api.promptql.pro.hasura.io/'
     : options.baseUrl[options.baseUrl.length - 1] === '/'
@@ -34,7 +39,7 @@ export const createPromptQLClient = (
 
   const timezone =
     options.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const llmConfig = options.llm ?? {
+  const aiPrimitivesLlm = options.aiPrimitivesLlm ?? {
     provider: 'hasura',
   };
 
@@ -43,6 +48,11 @@ export const createPromptQLClient = (
   ): Promise<DdnConfig> => {
     const defaultConfig =
       typeof options.ddn === 'function' ? await options.ddn() : options.ddn;
+
+    if (!ddn?.url && !defaultConfig.url) {
+      throw new PromptQLError([], '`ddn.url` is required');
+    }
+
     const url =
       ddn?.url ||
       (defaultConfig.url.endsWith('/v1/sql')
@@ -63,8 +73,19 @@ export const createPromptQLClient = (
     stream: boolean,
     queryOptions?: FetchOptions,
   ): Promise<Response> => {
+    if (
+      !body.interactions.length ||
+      body.interactions.every((interaction) => !interaction.user_message.text)
+    ) {
+      throw new PromptQLError(
+        [],
+        'require at least 1 interaction with non-empty user message content',
+      );
+    }
+
     const ddnConfig = await buildDdnConfig(body.ddn);
-    return fetch(`${baseUrl}query`, {
+
+    return fetchFn(`${baseUrl}query`, {
       ...queryOptions,
       method: 'POST',
       headers: {
@@ -73,13 +94,14 @@ export const createPromptQLClient = (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        llm: llmConfig,
+        llm: options.llm,
+        ai_primitives_llm: options.aiPrimitivesLlm,
         ...body,
         version: 'v1',
         ddn: ddnConfig,
         timezone: body.timezone || timezone,
         stream,
-      }),
+      } as QueryRequest),
     });
   };
 
@@ -171,15 +193,26 @@ export const createPromptQLClient = (
     body: PromptQLExecuteRequest,
     executeOptions?: FetchOptions,
   ): Promise<PromptQlExecutionResult> => {
+    if (!body.code) {
+      throw new PromptQLError([], '`code` is required');
+    }
+
     const ddnConfig = await buildDdnConfig(body.ddn);
 
-    return await fetch(`${baseUrl}execute_program`, {
+    return fetchFn(`${baseUrl}execute_program`, {
       ...executeOptions,
+      headers: {
+        ...clientHeaders,
+        ...executeOptions?.headers,
+        'Content-Type': 'application/json',
+      },
+      method: 'POST',
       body: JSON.stringify({
         ...body,
-        ai_primitives_llm: body.ai_primitives_llm ?? llmConfig,
+        ai_primitives_llm: body.ai_primitives_llm ?? aiPrimitivesLlm,
         ddn: ddnConfig,
-      }),
+        artifacts: body.artifacts ?? [],
+      } as ExecuteRequest),
     }).then(decodeResponseJson<PromptQlExecutionResult>);
   };
 
