@@ -31,4 +31,11 @@ jobs:
           cache: 'npm'
       - run: rm package-lock.json && npm install
       - run: npm run lint:fix
-      - run: npm run test
+      - run: npm run test:coverage
+        env:
+          PROMPTQL_API_KEY: ${{ secrets.PROMPTQL_API_KEY }}
+          HASURA_DDN_BASE_URL: ${{ secrets.HASURA_DDN_BASE_URL }}
+          DDN_AUTH_TOKEN: ${{ secrets.DDN_AUTH_TOKEN }}
+      - name: 'Report Coverage'
+        if: ${{ github.event_name == 'pull_request' }}
+        uses:  davelosert/vitest-coverage-report-action@v2

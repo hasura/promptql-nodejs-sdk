@@ -8,20 +8,24 @@ import type {
 } from './promptql';
 import type { Artifact } from './types';
 
-const assistantActionKeys: (keyof AssistantAction)[] = [
-  'code',
-  'code_error',
-  'code_output',
-  'message',
-  'plan',
-];
-
+/**
+ * The data of query chunks
+ *
+ * @export
+ * @typedef {QueryChunksData}
+ */
 export type QueryChunksData = {
   assistant_actions: AssistantAction[];
   modified_artifacts: Artifact[];
   error?: ErrorChunk;
 };
 
+/**
+ * A convenient helper type to concat and merge query response chunks to a final query response.
+ *
+ * @export
+ * @typedef {QueryChunks}
+ */
 export type QueryChunks = {
   getAssistantActions: () => AssistantAction[];
   getModifiedArtifacts: () => Artifact[];
@@ -32,6 +36,12 @@ export type QueryChunks = {
   toQueryResponse: () => QueryResponse;
 };
 
+/**
+ * Create a query chunks builder.
+ *
+ * @param {?QueryChunksData} [initialValue]
+ * @returns {QueryChunks}
+ */
 export const createQueryChunks = (
   initialValue?: QueryChunksData,
 ): QueryChunks => {
@@ -189,3 +199,11 @@ const concatNullableStrings = (
 
   return src + target;
 };
+
+const assistantActionKeys: (keyof AssistantAction)[] = [
+  'code',
+  'code_error',
+  'code_output',
+  'message',
+  'plan',
+];

@@ -65,6 +65,13 @@ export function withActiveSpan<TReturn>(
   });
 }
 
+/**
+ * A convenient function to set header attributes to the current span.
+ *
+ * @param {Span} span
+ * @param {(Record<string, string | ReadonlyArray<string>> | Headers | undefined)} headers
+ * @param {string} prefix
+ */
 export const setHeaderAttributes = (
   span: Span,
   headers: Record<string, string | ReadonlyArray<string>> | Headers | undefined,
@@ -86,5 +93,11 @@ export const setHeaderAttributes = (
   }
 };
 
-export const isHttpProtocol = (protocol: string) =>
+/**
+ * Check if the url protocol is http(s)
+ *
+ * @param {string} protocol
+ * @returns {(boolean)}
+ */
+export const isHttpProtocol = (protocol: string): boolean =>
   protocol === 'http:' || protocol === 'https:';
