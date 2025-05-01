@@ -2,7 +2,6 @@ import { type Span, SpanKind, trace } from '@opentelemetry/api';
 import type {
   DdnConfig,
   ExecuteRequest,
-  HttpValidationError,
   PromptQlExecutionResult,
   QueryRequest,
   QueryResponse,
@@ -20,7 +19,8 @@ import {
   DATA_CHUNK_PREFIX,
   isHttpProtocol,
   joinUrlPaths,
-  setHeaderAttributes,
+  validateResponse,
+  validateResponseAndDecodeJson,
   withActiveSpan,
 } from './utils';
 
@@ -43,11 +43,6 @@ export const createPromptQLClient = (
     throw new Error(`invalid promptql url: ${baseUrl}`);
   }
 
-  const serverPort = baseUrl.port
-    ? Number.parseInt(baseUrl.port, 10)
-    : baseUrl.protocol === 'https:'
-      ? 443
-      : 80;
   const clientHeaders = {
     ...(options.headers ?? {}),
     Authorization: `Bearer ${options.apiKey}`,
@@ -57,71 +52,6 @@ export const createPromptQLClient = (
     options.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
   const aiPrimitivesLlm = options.aiPrimitivesLlm ?? {
     provider: 'hasura',
-  };
-
-  // wrap fetch with telemetry and error handling
-  const withFetch = async (span: Span, url: URL, requestInit: RequestInit) => {
-    span.setAttributes({
-      'http.request.method': requestInit.method ?? 'GET',
-      'url.full': url.toString(),
-      'url.scheme': url.protocol,
-      'url.template': url.pathname,
-      'server.address': url.hostname,
-      'server.port': serverPort,
-      'network.protocol.name': 'http',
-      'network.protocol.version': '1.1',
-    });
-
-    setHeaderAttributes(
-      span,
-      requestInit.headers as Record<string, string | string[]>,
-      'http.request.header',
-    );
-
-    if (typeof requestInit.body === 'string') {
-      span.setAttribute('http.request.body.size', requestInit.body.length);
-    }
-
-    const response = await fetchFn(url, requestInit);
-
-    span.setAttribute('http.response.status_code', response.status);
-    setHeaderAttributes(span, response.headers, 'http.response.header');
-
-    if (response.status >= 400) {
-      const responseText = response.body
-        ? await response.text()
-        : response.statusText;
-      span.setAttribute(
-        'http.response.body.size',
-        response.body ? responseText.length : 0,
-      );
-
-      if (response.status > 500 || !response.body) {
-        throw new PromptQLError([], responseText);
-      }
-
-      try {
-        const pqlError = JSON.parse(responseText) as HttpValidationError;
-        const message = pqlError.detail?.length
-          ? pqlError.detail.map((d) => d.msg).join('. ')
-          : responseText;
-
-        throw new PromptQLError(pqlError.detail ?? [], message);
-      } catch (_) {
-        throw new PromptQLError([], responseText);
-      }
-    }
-
-    const rawContentLength = response.headers.get('content-length');
-
-    if (rawContentLength) {
-      try {
-        const contentLength = Number.parseInt(rawContentLength, 10);
-        span.setAttribute('http.response.body.size', contentLength);
-      } catch (_) {}
-    }
-
-    return response;
   };
 
   const buildDdnConfig = async (
@@ -199,7 +129,7 @@ export const createPromptQLClient = (
     const url = new URL(baseUrl);
     url.pathname = joinUrlPaths(url.pathname, 'query');
 
-    return withFetch(span, url, {
+    return fetchFn(url, {
       ...queryOptions,
       method: 'POST',
       headers: {
@@ -216,7 +146,7 @@ export const createPromptQLClient = (
         version,
         stream,
       } as QueryRequest),
-    });
+    }).then(validateResponse);
   };
 
   const query = (
@@ -225,7 +155,7 @@ export const createPromptQLClient = (
   ): Promise<QueryResponse> =>
     withActiveSpan(
       tracer,
-      'query',
+      'PromptQL Query',
       (span) => {
         return queryRaw(span, body, false, queryOptions)
           .then((response) => response.json())
@@ -254,7 +184,7 @@ export const createPromptQLClient = (
   ): Promise<Response> =>
     withActiveSpan(
       tracer,
-      'queryStream',
+      'PromptQL Query Stream',
       async (span) => {
         const response = await queryRaw(span, body, true, queryOptions);
 
@@ -343,7 +273,7 @@ export const createPromptQLClient = (
   ): Promise<PromptQlExecutionResult> =>
     withActiveSpan(
       tracer,
-      'executeProgram',
+      'PromptQL Execute Program',
       async (span) => {
         if (!others.code) {
           throw new PromptQLError([], '`code` is required');
@@ -369,7 +299,7 @@ export const createPromptQLClient = (
         const url = new URL(baseUrl);
         url.pathname = joinUrlPaths(url.pathname, 'execute_program');
 
-        return withFetch(span, url, {
+        return fetchFn(url, {
           ...executeOptions,
           headers: {
             ...clientHeaders,
@@ -384,10 +314,8 @@ export const createPromptQLClient = (
             artifacts: artifacts ?? [],
           } as ExecuteRequest),
         })
-          .then((response) => response.json())
-          .then((rawData) => {
-            const data = rawData as PromptQlExecutionResult;
-
+          .then(validateResponseAndDecodeJson<PromptQlExecutionResult>)
+          .then((data) => {
             span.setAttributes({
               'promptql.response.accessed_artifact_ids':
                 data.accessed_artifact_ids,

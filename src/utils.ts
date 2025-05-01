@@ -4,9 +4,48 @@ import {
   SpanStatusCode,
   type Tracer,
 } from '@opentelemetry/api';
+import type { HttpValidationError } from './promptql';
+import { PromptQLError } from './types';
 export const DATA_CHUNK_PREFIX = 'data: ';
 
-const SENSITIVE_HEADERS = ['auth', 'secret', 'key'];
+/**
+ * Validate response status and throw error
+ *
+ * @async
+ * @param {Response} response
+ * @returns {Promise<void>}
+ */
+export const validateResponse = async (
+  response: Response,
+): Promise<Response> => {
+  if (response.status < 400) {
+    return response;
+  }
+
+  const responseText = response.body
+    ? await response.text()
+    : response.statusText;
+
+  if (response.status > 500 || !response.body) {
+    throw new PromptQLError([], responseText);
+  }
+
+  try {
+    const pqlError = JSON.parse(responseText) as HttpValidationError;
+    const message = pqlError.detail?.length
+      ? pqlError.detail.map((d) => d.msg).join('. ')
+      : responseText;
+
+    throw new PromptQLError(pqlError.detail ?? [], message);
+  } catch (_) {
+    throw new PromptQLError([], responseText);
+  }
+};
+
+export const validateResponseAndDecodeJson = <T>(
+  response: Response,
+): Promise<T> =>
+  validateResponse(response).then((response) => response.json() as Promise<T>);
 
 /**
  * Wrap the function with a tracing span.
@@ -30,6 +69,7 @@ export function withActiveSpan<TReturn>(
       if (err instanceof Error || typeof err === 'string') {
         span.recordException(err);
       }
+
       span.setStatus({ code: SpanStatusCode.ERROR });
       span.end();
     };
@@ -64,34 +104,6 @@ export function withActiveSpan<TReturn>(
     }
   });
 }
-
-/**
- * A convenient function to set header attributes to the current span.
- *
- * @param {Span} span
- * @param {(Record<string, string | ReadonlyArray<string>> | Headers | undefined)} headers
- * @param {string} prefix
- */
-export const setHeaderAttributes = (
-  span: Span,
-  headers: Record<string, string | ReadonlyArray<string>> | Headers | undefined,
-  prefix: string,
-) => {
-  if (!headers) {
-    return;
-  }
-
-  for (const [key, value] of Object.entries(headers)) {
-    const lowerKey = key.toLowerCase();
-    const attributeName = `${prefix}.${lowerKey}`;
-
-    if (SENSITIVE_HEADERS.some((h) => lowerKey.includes(h))) {
-      span.setAttribute(attributeName, ['xxxxxx']);
-    } else {
-      span.setAttribute(attributeName, Array.isArray(value) ? value : [value]);
-    }
-  }
-};
 
 /**
  * Check if the url protocol is http(s)
