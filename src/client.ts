@@ -59,6 +59,7 @@ export const createPromptQLClient = (
     provider: 'hasura',
   };
 
+  // wrap fetch with telemetry and error handling
   const withFetch = async (span: Span, url: URL, requestInit: RequestInit) => {
     span.setAttributes({
       'http.request.method': requestInit.method ?? 'GET',
