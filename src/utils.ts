@@ -101,3 +101,47 @@ export const setHeaderAttributes = (
  */
 export const isHttpProtocol = (protocol: string): boolean =>
   protocol === 'http:' || protocol === 'https:';
+
+/**
+ * Join URL paths
+ *
+ * @param {...string[]} fragments
+ * @returns {string}
+ */
+export const joinUrlPaths = (...fragments: string[]): string => {
+  const result = fragments
+    .map((item) => trim(item, '/'))
+    .filter((item) => item)
+    .join('/');
+
+  return `/${result}`;
+};
+
+const trim = (input: string, char: string): string => {
+  const result = trimStart(input, char);
+  return trimEnd(result, char);
+};
+
+const trimStart = (input: string, char: string): string => {
+  for (let i = 0; i < input.length; i++) {
+    if (input[i] === char) {
+      continue;
+    }
+
+    return input.substring(i);
+  }
+
+  return '';
+};
+
+const trimEnd = (input: string, char: string): string => {
+  for (let i = input.length - 1; i >= 0; i--) {
+    if (input[i] === char) {
+      continue;
+    }
+
+    return input.substring(0, i + 1);
+  }
+
+  return '';
+};

@@ -1,4 +1,3 @@
-import { posix } from 'node:path';
 import { type Span, SpanKind, trace } from '@opentelemetry/api';
 import type {
   DdnConfig,
@@ -20,6 +19,7 @@ import {
 import {
   DATA_CHUNK_PREFIX,
   isHttpProtocol,
+  joinUrlPaths,
   setHeaderAttributes,
   withActiveSpan,
 } from './utils';
@@ -141,7 +141,7 @@ export const createPromptQLClient = (
     }
 
     if (!url.pathname.endsWith('/sql')) {
-      url.pathname = posix.join(url.pathname, 'v1/sql');
+      url.pathname = joinUrlPaths(url.pathname, 'v1/sql');
     }
 
     return {
@@ -197,7 +197,7 @@ export const createPromptQLClient = (
     span.setAttribute('promptql.request.ddn_url', ddnConfig.url);
 
     const url = new URL(baseUrl);
-    url.pathname = posix.join(url.pathname, 'query');
+    url.pathname = joinUrlPaths(url.pathname, 'query');
 
     return withFetch(span, url, {
       ...queryOptions,
@@ -367,7 +367,7 @@ export const createPromptQLClient = (
         span.setAttribute('promptql.request.ddn_url', ddnConfig.url);
 
         const url = new URL(baseUrl);
-        url.pathname = posix.join(url.pathname, 'execute_program');
+        url.pathname = joinUrlPaths(url.pathname, 'execute_program');
 
         return withFetch(span, url, {
           ...executeOptions,

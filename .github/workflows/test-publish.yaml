@@ -1,4 +1,4 @@
-name: Unit tests
+name: Lint, Tests and Publish
 
 on:
   workflow_call:
@@ -33,6 +33,7 @@ jobs:
           cache: 'npm'
       - run: rm package-lock.json && npm install
       - run: npm run lint:fix
+      - run: npm run build
       - run: npm run test:coverage
         env:
           PROMPTQL_API_KEY: ${{ secrets.PROMPTQL_API_KEY }}
