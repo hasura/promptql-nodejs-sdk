@@ -20,5 +20,17 @@ export default defineConfig({
       exclude: ['src/**/*.test.ts'],
     }),
   ],
-  test: {},
+  test: {
+    testTimeout: 300000,
+
+    coverage: {
+      reporter: ['text', 'json-summary', 'json'],
+      thresholds: {
+        lines: 50,
+        branches: 50,
+        functions: 50,
+        statements: 50,
+      },
+    },
+  },
 });
