@@ -138,6 +138,7 @@ export const createPromptQLClient = (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
+        system_instructions: options.systemInstructions,
         ...rest,
         llm,
         ai_primitives_llm,
