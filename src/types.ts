@@ -75,6 +75,13 @@ export type PromptQLClientConfig = {
   timezone?: string;
 
   /**
+   * Default system instruction prompt.
+   *
+   * @type {?string}
+   */
+  systemInstructions?: string;
+
+  /**
    * Use a custom http client function. Default is fetch.
    *
    * @type {?(
