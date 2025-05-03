@@ -239,21 +239,28 @@ export const createPromptQLClient = (
 
         while (true) {
           if (queryOptions?.signal?.aborted) {
+            await response.body.cancel();
             break;
           }
 
-          const { value, done } = await reader.read();
-          if (done) {
-            break;
-          }
+          try {
+            const { value, done } = await reader.read();
+            if (done) {
+              break;
+            }
 
-          const text = decoder.decode(value);
-          if (!text) {
-            continue;
-          }
+            const text = decoder.decode(value);
+            if (!text) {
+              continue;
+            }
 
-          responseSize += text.length;
-          await handleChunk(text);
+            responseSize += text.length;
+            await handleChunk(text);
+          } catch (err) {
+            await response.body.cancel();
+
+            throw err;
+          }
         }
 
         span.setAttribute('http.response.body.size', responseSize);
