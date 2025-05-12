@@ -213,12 +213,13 @@ export const createPromptQLClient = (
           // split chunks to parts and try to decode one by one.
           const rawChunks = tempText.split(DATA_CHUNK_PREFIX);
 
-          rawChunks.forEach(async (chunk, index) => {
+          for (let i = 0; i < rawChunks.length; i++) {
+            const chunk = rawChunks[i]!;
             const line = chunk.trim();
 
             // cache the incomplete chunk to parse later.
             if (line[line.length - 1] !== '}') {
-              incompleteChunk += index > 0 ? `data: ${chunk}` : chunk;
+              incompleteChunk += i > 0 ? `data: ${chunk}` : chunk;
               return;
             }
 
@@ -227,32 +228,39 @@ export const createPromptQLClient = (
             try {
               data = JSON.parse(line);
             } catch (err) {
-              incompleteChunk += index > 0 ? `data: ${line}` : line;
+              incompleteChunk += i > 0 ? `data: ${line}` : line;
             }
 
             if (data) {
               await callback(data);
             }
-          });
+          }
         };
 
         while (true) {
           if (queryOptions?.signal?.aborted) {
+            await response.body.cancel();
             break;
           }
 
-          const { value, done } = await reader.read();
-          if (done) {
-            break;
-          }
+          try {
+            const { value, done } = await reader.read();
+            if (done) {
+              break;
+            }
 
-          const text = decoder.decode(value);
-          if (!text) {
-            continue;
-          }
+            const text = decoder.decode(value);
+            if (!text) {
+              continue;
+            }
 
-          responseSize += text.length;
-          await handleChunk(text);
+            responseSize += text.length;
+            await handleChunk(text);
+          } catch (err) {
+            await response.body.cancel();
+
+            throw err;
+          }
         }
 
         span.setAttribute('http.response.body.size', responseSize);
