@@ -4,6 +4,7 @@ import { createQueryChunks } from './query-chunks';
 
 test('QueryChunks', (t) => {
   const fixtures = [
+    '{"type":"thread_metadata_chunk","thread_id":"9a6c9bc2-8005-4cf7-ba93-22edf90fa490"}',
     '{"message":"I\'ll re","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}',
     '{"message":"trieve the list of custome","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}',
     '{"message":"rs for you.","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}',
@@ -32,6 +33,7 @@ test('QueryChunks', (t) => {
     '{"message":" full data so I must not make up observations\' />","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}',
   ];
   const expected: QueryResponse = {
+    thread_id: '9a6c9bc2-8005-4cf7-ba93-22edf90fa490',
     assistant_actions: [
       {
         code: 'sql = """\nSELECT id, name \nFROM customers()\nORDER BY name\n"""\n\ncustomers = executor.run_sql(sql)\n\nif len(customers) == 0:\n    executor.print("No customers found.")\nelse:\n    executor.store_artifact(\n        \'customer_list\',\n        \'List of Customers\',\n        \'table\',\n        customers\n    )',

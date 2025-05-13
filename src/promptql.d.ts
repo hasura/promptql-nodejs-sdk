@@ -70,8 +70,8 @@ export type components = {
             /** Api Key */
             api_key: string;
         };
-        /** AssistantAction */
-        AssistantAction: {
+        /** ApiThreadAssistantAction */
+        ApiThreadAssistantAction: {
             /** Message */
             message?: string | null;
             /** Plan */
@@ -82,6 +82,17 @@ export type components = {
             code_output?: string | null;
             /** Code Error */
             code_error?: string | null;
+        };
+        /** ApiThreadInteraction */
+        ApiThreadInteraction: {
+            user_message: components["schemas"]["ApiThreadUserMessage"];
+            /** Assistant Actions */
+            assistant_actions?: components["schemas"]["ApiThreadAssistantAction"][];
+        };
+        /** ApiThreadUserMessage */
+        ApiThreadUserMessage: {
+            /** Text */
+            text: string;
         };
         /** DdnConfig */
         DdnConfig: {
@@ -125,12 +136,6 @@ export type components = {
              * @enum {string}
              */
             provider: "hasura";
-        };
-        /** Interaction */
-        Interaction: {
-            user_message: components["schemas"]["UserMessage"];
-            /** Assistant Actions */
-            assistant_actions?: components["schemas"]["AssistantAction"][];
         };
         /** LlmUsage */
         LlmUsage: {
@@ -195,14 +200,19 @@ export type components = {
              */
             timezone: string;
             /** Interactions */
-            interactions: components["schemas"]["Interaction"][];
+            interactions: components["schemas"]["ApiThreadInteraction"][];
             /** Stream */
             stream: boolean;
         };
         /** QueryResponse */
         QueryResponse: {
+            /**
+             * Thread Id
+             * Format: uuid
+             */
+            thread_id: string;
             /** Assistant Actions */
-            assistant_actions: components["schemas"]["AssistantAction"][];
+            assistant_actions: components["schemas"]["ApiThreadAssistantAction"][];
             /**
              * Modified Artifacts
              * @description List of artifacts created or updated in this request. May contain duplicate artifact identifiers.
@@ -242,11 +252,6 @@ export type components = {
             /** Data */
             data: string;
         };
-        /** UserMessage */
-        UserMessage: {
-            /** Text */
-            text: string;
-        };
         /** ValidationError */
         ValidationError: {
             /** Location */
@@ -284,7 +289,7 @@ export type components = {
             /** Visualization Data */
             visualization_data: unknown;
         };
-        QueryResponseChunk: components["schemas"]["AssistantActionChunk"] | components["schemas"]["ArtifactUpdateChunk"] | components["schemas"]["ErrorChunk"];
+        QueryResponseChunk: components["schemas"]["ThreadMetadataChunk"] | components["schemas"]["AssistantActionChunk"] | components["schemas"]["ArtifactUpdateChunk"] | components["schemas"]["ErrorChunk"];
         /** ArtifactUpdateChunk */
         ArtifactUpdateChunk: {
             /**
@@ -340,6 +345,19 @@ export type components = {
             /** Error */
             error: string;
         };
+        /** ThreadMetadataChunk */
+        ThreadMetadataChunk: {
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            type: "thread_metadata_chunk";
+            /**
+             * Thread Id
+             * Format: uuid
+             */
+            thread_id: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -349,19 +367,19 @@ export type components = {
 };
 export type ApiAnthropicConfig = components['schemas']['ApiAnthropicConfig'];
 export type ApiOpenAiConfig = components['schemas']['ApiOpenAIConfig'];
-export type AssistantAction = components['schemas']['AssistantAction'];
+export type ApiThreadAssistantAction = components['schemas']['ApiThreadAssistantAction'];
+export type ApiThreadInteraction = components['schemas']['ApiThreadInteraction'];
+export type ApiThreadUserMessage = components['schemas']['ApiThreadUserMessage'];
 export type DdnConfig = components['schemas']['DdnConfig'];
 export type ExecuteRequest = components['schemas']['ExecuteRequest'];
 export type HttpValidationError = components['schemas']['HTTPValidationError'];
 export type HasuraLlmConfig = components['schemas']['HasuraLlmConfig'];
-export type Interaction = components['schemas']['Interaction'];
 export type LlmUsage = components['schemas']['LlmUsage'];
 export type PromptQlExecutionResult = components['schemas']['PromptQlExecutionResult'];
 export type QueryRequest = components['schemas']['QueryRequest'];
 export type QueryResponse = components['schemas']['QueryResponse'];
 export type TableArtifact = components['schemas']['TableArtifact'];
 export type TextArtifact = components['schemas']['TextArtifact'];
-export type UserMessage = components['schemas']['UserMessage'];
 export type ValidationError = components['schemas']['ValidationError'];
 export type VisualizationArtifact = components['schemas']['VisualizationArtifact'];
 export type VisualizationArtifactData = components['schemas']['VisualizationArtifactData'];
@@ -369,6 +387,7 @@ export type QueryResponseChunk = components['schemas']['QueryResponseChunk'];
 export type ArtifactUpdateChunk = components['schemas']['ArtifactUpdateChunk'];
 export type AssistantActionChunk = components['schemas']['AssistantActionChunk'];
 export type ErrorChunk = components['schemas']['ErrorChunk'];
+export type ThreadMetadataChunk = components['schemas']['ThreadMetadataChunk'];
 export type $defs = Record<string, never>;
 export interface operations {
     execute_program_execute_program_post: {
@@ -424,6 +443,21 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QueryResponse"];
+                    /** @example data: {"message":"Let me try to store an artifact","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                     *
+                     *     data: {"message":null,"plan":"- Store an artifact with sample data","code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                     *
+                     *     data: {"message":null,"plan":null,"code":"executor.store_artitfact('test', 'Test artifact', 'table', [{'foo':'bar'}])","code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                     *
+                     *     data: {"message":null,"plan":null,"code":null,"code_output":"Artifact stored","code_error":null,"type":"assistant_action_chunk","index":0}
+                     *
+                     *     data: {"type":"artifact_update_chunk","artifact":{"identifier":"test","title":"Test Artifact","artifact_type":"table","data":[{"foo":"bar"}]}}
+                     *
+                     *     data: {"message":"Your artifact is <artifact","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
+                     *
+                     *     data: {"message":" identifier='test'/>","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
+                     *
+                     *      */
                     "text/event-stream": components["schemas"]["QueryResponseChunk"];
                 };
             };
