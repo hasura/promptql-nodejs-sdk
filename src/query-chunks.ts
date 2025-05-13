@@ -1,5 +1,5 @@
 import type {
-  AssistantAction,
+  ApiThreadAssistantAction,
   ErrorChunk,
   QueryResponse,
   QueryResponseChunk,
@@ -15,7 +15,8 @@ import type { Artifact } from './types';
  * @typedef {QueryChunksData}
  */
 export type QueryChunksData = {
-  assistant_actions: AssistantAction[];
+  thread_id?: string;
+  assistant_actions: ApiThreadAssistantAction[];
   modified_artifacts: Artifact[];
   error?: ErrorChunk;
 };
@@ -27,7 +28,8 @@ export type QueryChunksData = {
  * @typedef {QueryChunks}
  */
 export type QueryChunks = {
-  getAssistantActions: () => AssistantAction[];
+  getThreadId: () => string | null;
+  getAssistantActions: () => ApiThreadAssistantAction[];
   getModifiedArtifacts: () => Artifact[];
   getError: () => ErrorChunk | undefined;
   isError: () => boolean;
@@ -48,8 +50,9 @@ export const createQueryChunks = (
   const buildArtifactKey = (artifact: Artifact) =>
     `${artifact.artifact_type}:${artifact.identifier}`;
 
+  let threadId: string | null = initialValue?.thread_id ?? null;
   let errorChunk: ErrorChunk | undefined;
-  const assistantActions: AssistantAction[] =
+  const assistantActions: ApiThreadAssistantAction[] =
     initialValue?.assistant_actions ?? [];
   const modifiedArtifacts: Record<string, Artifact> =
     initialValue?.modified_artifacts.reduce((acc, artifact) => {
@@ -63,6 +66,7 @@ export const createQueryChunks = (
 
   const clone = (): QueryChunks => {
     return createQueryChunks({
+      thread_id: threadId ?? undefined,
       error: errorChunk,
       assistant_actions: assistantActions.map((action) => ({
         ...action,
@@ -100,6 +104,9 @@ export const createQueryChunks = (
 
   const push = (chunk: QueryResponseChunk) => {
     switch (chunk.type) {
+      case 'thread_metadata_chunk':
+        threadId = chunk.thread_id;
+        break;
       case 'error_chunk':
         {
           if (!errorChunk) {
@@ -169,12 +176,14 @@ export const createQueryChunks = (
 
   const toQueryResponse = (): QueryResponse => {
     return {
+      thread_id: threadId!,
       assistant_actions: assistantActions,
       modified_artifacts: getModifiedArtifacts(),
     };
   };
 
   return {
+    getThreadId: () => threadId,
     getAssistantActions: () => assistantActions,
     getError: () => errorChunk,
     isError: () => errorChunk !== undefined,
@@ -200,7 +209,7 @@ const concatNullableStrings = (
   return src + target;
 };
 
-const assistantActionKeys: (keyof AssistantAction)[] = [
+const assistantActionKeys: (keyof ApiThreadAssistantAction)[] = [
   'code',
   'code_error',
   'code_output',
