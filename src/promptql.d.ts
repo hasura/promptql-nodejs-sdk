@@ -443,6 +443,21 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QueryResponse"];
+                    /** @example data: {"message":"Let me try to store an artifact","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                     *
+                     *     data: {"message":null,"plan":"- Store an artifact with sample data","code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                     *
+                     *     data: {"message":null,"plan":null,"code":"executor.store_artitfact('test', 'Test artifact', 'table', [{'foo':'bar'}])","code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                     *
+                     *     data: {"message":null,"plan":null,"code":null,"code_output":"Artifact stored","code_error":null,"type":"assistant_action_chunk","index":0}
+                     *
+                     *     data: {"type":"artifact_update_chunk","artifact":{"identifier":"test","title":"Test Artifact","artifact_type":"table","data":[{"foo":"bar"}]}}
+                     *
+                     *     data: {"message":"Your artifact is <artifact","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
+                     *
+                     *     data: {"message":" identifier='test'/>","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
+                     *
+                     *      */
                     "text/event-stream": components["schemas"]["QueryResponseChunk"];
                 };
             };
