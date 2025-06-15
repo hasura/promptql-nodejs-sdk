@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import type { QueryResponse, QueryResponseChunk } from './promptql';
+import type { QueryResponse, QueryResponseChunk } from '../promptql';
 import { createQueryChunks } from './query-chunks';
 
 test('QueryChunks', (t) => {

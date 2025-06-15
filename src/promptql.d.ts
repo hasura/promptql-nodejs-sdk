@@ -109,6 +109,26 @@ export type components = {
                 [key: string]: string;
             };
         };
+        /** DdnConfigV2 */
+        DdnConfigV2: {
+            /**
+             * Build Id
+             * @description UUID of the DDN build
+             */
+            build_id?: string | null;
+            /**
+             * Build Version
+             * @description Version of the DDN build
+             */
+            build_version?: string | null;
+            /**
+             * Headers
+             * @description HTTP headers that should be forwarded to DDN
+             */
+            headers?: {
+                [key: string]: string;
+            };
+        };
         /** ExecuteRequest */
         ExecuteRequest: {
             /** Code */
@@ -119,7 +139,7 @@ export type components = {
              */
             promptql_api_key?: string | null;
             /** Ai Primitives Llm */
-            ai_primitives_llm: (components["schemas"]["HasuraLlmConfig"] | components["schemas"]["ApiOpenAIConfig"] | components["schemas"]["ApiAnthropicConfig"]) | null;
+            ai_primitives_llm: (components["schemas"]["HasuraLlmConfigV1"] | components["schemas"]["ApiOpenAIConfig"] | components["schemas"]["ApiAnthropicConfig"]) | null;
             ddn: components["schemas"]["DdnConfig"] | null;
             /** Artifacts */
             artifacts: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
@@ -129,8 +149,8 @@ export type components = {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
-        /** HasuraLlmConfig */
-        HasuraLlmConfig: {
+        /** HasuraLlmConfigV1 */
+        HasuraLlmConfigV1: {
             /**
              * @description discriminator enum property added by openapi-typescript
              * @enum {string}
@@ -159,6 +179,11 @@ export type components = {
              * @default 0
              */
             output_tokens: number;
+            /**
+             * Cached Tokens
+             * @default 0
+             */
+            cached_tokens: number;
         };
         /** PromptQlExecutionResult */
         PromptQlExecutionResult: {
@@ -173,11 +198,22 @@ export type components = {
             /** Llm Usages */
             llm_usages: components["schemas"]["LlmUsage"][];
         };
-        /** QueryRequest */
-        QueryRequest: {
+        /** QueryRequestV1 */
+        QueryRequestV1: {
+            /** Stream */
+            stream: boolean;
+            /** Artifacts */
+            artifacts?: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
             /**
-             * Version
-             * @constant
+             * Timezone
+             * @description An IANA timezone used to interpret queries that implicitly require timezones
+             */
+            timezone: string;
+            /** Interactions */
+            interactions: components["schemas"]["ApiThreadInteraction"][];
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
              */
             version: "v1";
             /**
@@ -186,14 +222,19 @@ export type components = {
              */
             promptql_api_key?: string | null;
             /** Llm */
-            llm?: components["schemas"]["HasuraLlmConfig"] | components["schemas"]["ApiOpenAIConfig"] | components["schemas"]["ApiAnthropicConfig"];
+            llm?: components["schemas"]["HasuraLlmConfigV1"] | components["schemas"]["ApiOpenAIConfig"] | components["schemas"]["ApiAnthropicConfig"];
             /** Ai Primitives Llm */
-            ai_primitives_llm?: (components["schemas"]["HasuraLlmConfig"] | components["schemas"]["ApiOpenAIConfig"] | components["schemas"]["ApiAnthropicConfig"]) | null;
+            ai_primitives_llm?: (components["schemas"]["HasuraLlmConfigV1"] | components["schemas"]["ApiOpenAIConfig"] | components["schemas"]["ApiAnthropicConfig"]) | null;
             ddn: components["schemas"]["DdnConfig"];
-            /** Artifacts */
-            artifacts?: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
             /** System Instructions */
             system_instructions?: string | null;
+        };
+        /** QueryRequestV2 */
+        QueryRequestV2: {
+            /** Stream */
+            stream: boolean;
+            /** Artifacts */
+            artifacts?: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
             /**
              * Timezone
              * @description An IANA timezone used to interpret queries that implicitly require timezones
@@ -201,8 +242,12 @@ export type components = {
             timezone: string;
             /** Interactions */
             interactions: components["schemas"]["ApiThreadInteraction"][];
-            /** Stream */
-            stream: boolean;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            version: "v2";
+            ddn: components["schemas"]["DdnConfigV2"];
         };
         /** QueryResponse */
         QueryResponse: {
@@ -371,12 +416,14 @@ export type ApiThreadAssistantAction = components['schemas']['ApiThreadAssistant
 export type ApiThreadInteraction = components['schemas']['ApiThreadInteraction'];
 export type ApiThreadUserMessage = components['schemas']['ApiThreadUserMessage'];
 export type DdnConfig = components['schemas']['DdnConfig'];
+export type DdnConfigV2 = components['schemas']['DdnConfigV2'];
 export type ExecuteRequest = components['schemas']['ExecuteRequest'];
 export type HttpValidationError = components['schemas']['HTTPValidationError'];
-export type HasuraLlmConfig = components['schemas']['HasuraLlmConfig'];
+export type HasuraLlmConfigV1 = components['schemas']['HasuraLlmConfigV1'];
 export type LlmUsage = components['schemas']['LlmUsage'];
 export type PromptQlExecutionResult = components['schemas']['PromptQlExecutionResult'];
-export type QueryRequest = components['schemas']['QueryRequest'];
+export type QueryRequestV1 = components['schemas']['QueryRequestV1'];
+export type QueryRequestV2 = components['schemas']['QueryRequestV2'];
 export type QueryResponse = components['schemas']['QueryResponse'];
 export type TableArtifact = components['schemas']['TableArtifact'];
 export type TextArtifact = components['schemas']['TextArtifact'];
@@ -432,7 +479,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["QueryRequest"];
+                "application/json": components["schemas"]["QueryRequestV1"] | components["schemas"]["QueryRequestV2"];
             };
         };
         responses: {
@@ -456,6 +503,8 @@ export interface operations {
                      *     data: {"message":"Your artifact is <artifact","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
                      *
                      *     data: {"message":" identifier='test'/>","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
+                     *
+                     *     data: {"type":"thread_metadata_chunk","thread_id":"00000000-0000-0000-0000-000000000000"}
                      *
                      *      */
                     "text/event-stream": components["schemas"]["QueryResponseChunk"];

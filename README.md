@@ -20,12 +20,14 @@ npm install @hasura/promptql
 
 ### Use PromptQL SDK
 
+#### Create client
+
 Create the PromptQL client with required configurations:
 
 ```ts
-import { createPromptQLClient } from '@hasura/promptql';
+import { createPromptQLClientV1 } from '@hasura/promptql';
 
-const client = createPromptQLClient({
+const client = createPromptQLClientV1({
     apiKey: '<your-promptql-api-key>',
     ddn: {
         url: '<your-project-endpoint>',
@@ -42,7 +44,11 @@ const client = createPromptQLClient({
     //     }
     // }}  
 });
+```
 
+#### Run a Query
+
+```ts
 const runQuery = (text: string) => {
     return client.query({
         artifacts: [],
@@ -70,7 +76,7 @@ runQuery('what can you do?').then((response) => {
 
 ## Reference
 
-### Natural Language 
+### Natural Language (version 1)
 
 The [Natural Language Query API](https://hasura.io/docs/promptql/promptql-apis/natural-language-api/) allows you to interact with PromptQL directly, sending messages and receiving responses.
 
@@ -78,7 +84,7 @@ The [Natural Language Query API](https://hasura.io/docs/promptql/promptql-apis/n
 
 ```ts
 function query(
-    body: PromptQLQueryRequest, 
+    body: PromptQLQueryRequestV1,
     queryOptions?: FetchOptions
 ) => Promise<QueryResponse>
 ```
@@ -90,7 +96,7 @@ If the callback isn't set the client returns the raw response and you need to ha
 
 ```ts
 function queryStream(
-    body: PromptQLQueryRequest, 
+    body: PromptQLQueryRequestV1, 
     callback?: (data: QueryResponseChunk) => void | Promise<void>, 
     queryOptions?: FetchOptions
 ) Promise<Response>;
@@ -112,6 +118,47 @@ client
         console.log(chunk);
     },
 );
+```
+
+### Natural Language (version 2)
+
+The API version 2 simplifies request parameters: 
+- The DDN URL is replaced by `build_version`. 
+- `llm`, `ai_primitives_llm`, and `system_instructions` are removed. 
+
+To use the API v2, you need to create a PromptQL Client v2:
+
+```ts
+import { createPromptQLClientV2 } from '@hasura/promptql';
+
+const client = createPromptQLClientV2({
+    apiKey: '<your-promptql-api-key>',
+    ddn: {
+        build_version: '<your-build-version>',
+        headers: {
+            'Authorization': '<credential>'
+        }
+    },
+});
+```
+
+#### Non-Streaming
+
+```ts
+function query(
+    body: PromptQLQueryRequestV2,
+    queryOptions?: FetchOptions
+) => Promise<QueryResponse>
+```
+
+#### Streaming
+
+```ts
+function queryStream(
+    body: PromptQLQueryRequestV2, 
+    callback?: (data: QueryResponseChunk) => void | Promise<void>, 
+    queryOptions?: FetchOptions
+) Promise<Response>;
 ```
 
 ### Execute Program
