@@ -5,8 +5,8 @@ import type {
   QueryResponseChunk,
   TableArtifact,
   VisualizationArtifact,
-} from './promptql';
-import type { Artifact } from './types';
+} from '../promptql';
+import type { Artifact } from '../types';
 
 /**
  * The data of query chunks

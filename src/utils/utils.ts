@@ -4,8 +4,9 @@ import {
   SpanStatusCode,
   type Tracer,
 } from '@opentelemetry/api';
-import type { HttpValidationError } from './promptql';
-import { PromptQLError } from './types';
+import type { HttpValidationError } from '../promptql';
+import { PromptQLError } from '../types';
+
 export const DATA_CHUNK_PREFIX = 'data: ';
 
 /**
