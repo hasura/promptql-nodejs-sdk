@@ -149,7 +149,6 @@ export const createPromptQLClientV2 = (
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        system_instructions: options.systemInstructions,
         ...rest,
         ddn: ddnConfig,
         timezone,
