@@ -200,7 +200,7 @@ export const createPromptQLClientV1 = (
           'promptql.request.artifacts_length',
           artifacts?.length ?? 0,
         );
-        span.setAttribute('promptql.request.ddn_url', ddn?.url ?? '');
+        span.setAttribute('promptql.request.ddn_url', ddnConfig.url);
 
         if (ai_primitives_llm?.provider) {
           span.setAttribute(

@@ -70,7 +70,7 @@ export const createPromptQLClientV2 = (
     const build_id = ddn?.build_id || defaultConfig?.build_id;
     const build_version = ddn?.build_version || defaultConfig?.build_version;
 
-    if (build_id && UUID_REGEX.test(build_id)) {
+    if (build_id && !UUID_REGEX.test(build_id)) {
       throw new PromptQLError(
         [],
         '`ddn.build_id` must be null or a valid uuid',
