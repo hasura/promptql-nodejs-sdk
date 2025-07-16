@@ -7,8 +7,6 @@ import {
 import type { HttpValidationError } from '../promptql';
 import { PromptQLError } from '../types';
 
-export const DATA_CHUNK_PREFIX = 'data: ';
-
 /**
  * Validate response status and throw error
  *

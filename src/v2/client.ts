@@ -1,7 +1,7 @@
 import { type Span, SpanKind, trace } from '@opentelemetry/api';
 import type {
-  DdnConfig,
   DdnConfigV2,
+  ExecuteRequestV2,
   PromptQlExecutionResult,
   QueryRequestV2,
   QueryResponse,
@@ -12,21 +12,18 @@ import {
   type FetchOptions,
   PromptQLError,
 } from '../types';
+import { readQueryStream } from '../utils/query-stream';
 import {
   isHttpProtocol,
   joinUrlPaths,
   validateResponse,
+  validateResponseAndDecodeJson,
   withActiveSpan,
 } from '../utils/utils';
-import type { PromptQLExecuteRequest } from '../v1';
-import {
-  buildDdnConfigV1,
-  executeProgram,
-  readQueryStream,
-} from '../v1/client';
 import type {
   PromptQLClientConfigV2,
   PromptQLClientV2,
+  PromptQLExecuteRequestV2,
   PromptQLQueryRequestV2,
 } from './types';
 
@@ -61,22 +58,14 @@ export const createPromptQLClientV2 = (
     options.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const buildDdnConfigV2 = async (
+    span: Span,
     ddn?: Partial<DdnConfigV2> | null,
   ): Promise<DdnConfigV2> => {
-    const defaultConfig =
-      typeof options.ddn === 'function' ? await options.ddn() : options.ddn;
-
-    if (
-      !ddn?.build_version &&
-      !ddn?.build_id &&
-      !defaultConfig?.build_id &&
-      !defaultConfig?.build_version
-    ) {
-      throw new PromptQLError(
-        [],
-        '`ddn.build_id` or `ddn.build_version` is required',
-      );
-    }
+    const defaultConfig = !options.ddn
+      ? {}
+      : typeof options.ddn === 'function'
+        ? await options.ddn()
+        : options.ddn;
 
     const build_id = ddn?.build_id || defaultConfig?.build_id;
     const build_version = ddn?.build_version || defaultConfig?.build_version;
@@ -86,6 +75,14 @@ export const createPromptQLClientV2 = (
         [],
         '`ddn.build_id` must be null or a valid uuid',
       );
+    }
+
+    if (build_id) {
+      span.setAttribute('promptql.request.ddn_build_id', build_id);
+    }
+
+    if (build_version) {
+      span.setAttribute('promptql.request.ddn_build_version', build_version);
     }
 
     return {
@@ -114,28 +111,16 @@ export const createPromptQLClientV2 = (
       );
     }
 
-    const version = 'v2';
     const timezone = rest.timezone || defaultTimezone;
 
     span.setAttributes({
       'promptql.request.interactions_length': rest.interactions.length,
       'promptql.request.artifacts_length': rest.artifacts?.length ?? 0,
       'promptql.request.timezone': timezone,
-      'promptql.request.version': version,
+      'promptql.request.version': 'v2',
     });
 
-    const ddnConfig = await buildDdnConfigV2(ddn);
-
-    if (ddnConfig.build_id) {
-      span.setAttribute('promptql.request.ddn_build_id', ddnConfig.build_id);
-    }
-
-    if (ddnConfig.build_version) {
-      span.setAttribute(
-        'promptql.request.ddn_build_version',
-        ddnConfig.build_version,
-      );
-    }
+    const ddnConfig = await buildDdnConfigV2(span, ddn);
 
     const url = new URL(baseUrl);
     url.pathname = joinUrlPaths(url.pathname, 'query');
@@ -152,7 +137,7 @@ export const createPromptQLClientV2 = (
         ...rest,
         ddn: ddnConfig,
         timezone,
-        version,
+        version: 'v2',
         stream,
       } as QueryRequestV2),
     }).then(validateResponse);
@@ -214,8 +199,8 @@ export const createPromptQLClientV2 = (
       },
     );
 
-  const _executeProgram = async (
-    { ddn, ...others }: PromptQLExecuteRequest,
+  const executeProgram = async (
+    { ddn, artifacts, ...others }: PromptQLExecuteRequestV2,
     executeOptions?: FetchOptions,
   ): Promise<PromptQlExecutionResult> =>
     withActiveSpan(
@@ -226,22 +211,41 @@ export const createPromptQLClientV2 = (
           throw new PromptQLError([], '`code` is required');
         }
 
-        const ddnConfig = await buildDdnConfigV1(ddn, options.ddn as DdnConfig);
+        const ddnConfig = await buildDdnConfigV2(span, ddn);
+        const url = new URL(baseUrl.toString());
+        url.pathname = joinUrlPaths(url.pathname, 'execute_program');
 
-        return executeProgram(
-          {
-            ...others,
-            ddn: ddnConfig,
-          },
-          {
-            span,
-            baseUrl: baseUrl.toString(),
-            headers: clientHeaders,
-            fetch: fetchFn,
-            aiPrimitivesLlm: options.aiPrimitivesLlm,
-          },
-          executeOptions,
+        span.setAttribute(
+          'promptql.request.artifacts_length',
+          artifacts?.length ?? 0,
         );
+
+        return fetchFn(url, {
+          ...executeOptions,
+          headers: {
+            ...clientHeaders,
+            ...executeOptions?.headers,
+            'Content-Type': 'application/json',
+          },
+          method: 'POST',
+          body: JSON.stringify({
+            ...others,
+            version: 'v2',
+            ddn: ddnConfig,
+            artifacts: artifacts ?? [],
+          } as ExecuteRequestV2),
+        })
+          .then(validateResponseAndDecodeJson<PromptQlExecutionResult>)
+          .then((data) => {
+            span.setAttributes({
+              'promptql.response.accessed_artifact_ids':
+                data.accessed_artifact_ids,
+              'promptql.response.modified_artifacts_length':
+                data.modified_artifacts.length,
+            });
+
+            return data;
+          });
       },
       {
         kind: SpanKind.CLIENT,
@@ -251,6 +255,6 @@ export const createPromptQLClientV2 = (
   return {
     query,
     queryStream,
-    executeProgram: _executeProgram,
+    executeProgram,
   };
 };

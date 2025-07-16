@@ -120,15 +120,13 @@ describe('PromptQLClientError', () => {
 
 const createTestClient = () => {
   const apiKey = getEnv('PROMPTQL_API_KEY');
-  const ddnBaseUrl = getEnv('HASURA_DDN_BASE_URL');
-  const ddnBuildVersion = getEnv('HASURA_DDN_BUILD_VERSION');
+  // const ddnBuildVersion = getEnv('HASURA_DDN_BUILD_VERSION');
   const ddnAuthToken = getEnv('DDN_AUTH_TOKEN');
 
   return createPromptQLClientV2({
     apiKey,
     ddn: {
-      url: ddnBaseUrl,
-      build_version: ddnBuildVersion,
+      // build_version: ddnBuildVersion,
       headers: {
         Authorization: ddnAuthToken,
       },

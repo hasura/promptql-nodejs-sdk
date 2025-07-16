@@ -78,6 +78,8 @@ export type components = {
             plan?: string | null;
             /** Code */
             code?: string | null;
+            /** Automation Code */
+            automation_code?: string | null;
             /** Code Output */
             code_output?: string | null;
             /** Code Error */
@@ -88,11 +90,60 @@ export type components = {
             user_message: components["schemas"]["ApiThreadUserMessage"];
             /** Assistant Actions */
             assistant_actions?: components["schemas"]["ApiThreadAssistantAction"][];
+            /** Error */
+            error?: string | null;
+            /** Completion Timestamp */
+            completion_timestamp?: string | null;
+            /** Canceled Timestamp */
+            canceled_timestamp?: string | null;
+            /** Error Timestamp */
+            error_timestamp?: string | null;
         };
         /** ApiThreadUserMessage */
         ApiThreadUserMessage: {
             /** Text */
             text: string;
+        };
+        /** AutomationArtifact */
+        AutomationArtifact: {
+            /** Identifier */
+            identifier: string;
+            /** Title */
+            title: string;
+            /**
+             * @description discriminator enum property added by openapi-typescript
+             * @enum {string}
+             */
+            artifact_type: "automation";
+            /** @description Automation data containing Python code and optional sample input */
+            data: components["schemas"]["AutomationArtifactData"];
+        };
+        /**
+         * AutomationArtifactData
+         * @description Data structure for automation artifacts containing code and parsed schemas.
+         *
+         *     Attributes:
+         *         code: The Python code for the automation
+         *         input_schema: Parsed JSON schema for input validation (extracted from code comments)
+         *         output_schema: Parsed JSON schema for output validation (extracted from code comments)
+         */
+        AutomationArtifactData: {
+            /** Code */
+            code: string;
+            /**
+             * Input Schema
+             * @default null
+             */
+            input_schema: {
+                [key: string]: unknown;
+            } | null;
+            /**
+             * Output Schema
+             * @default null
+             */
+            output_schema: {
+                [key: string]: unknown;
+            } | null;
         };
         /** DdnConfig */
         DdnConfig: {
@@ -113,12 +164,12 @@ export type components = {
         DdnConfigV2: {
             /**
              * Build Id
-             * @description UUID of the DDN build
+             * @description UUID of the DDN build. If both build_id and build_version are None, uses the applied build.
              */
             build_id?: string | null;
             /**
              * Build Version
-             * @description Version of the DDN build
+             * @description Version of the DDN build. If both build_id and build_version are None, uses the applied build.
              */
             build_version?: string | null;
             /**
@@ -129,8 +180,10 @@ export type components = {
                 [key: string]: string;
             };
         };
-        /** ExecuteRequest */
-        ExecuteRequest: {
+        /** ExecuteRequestV1 */
+        ExecuteRequestV1: {
+            /** Version */
+            version?: "v1" | null;
             /** Code */
             code: string;
             /**
@@ -142,7 +195,20 @@ export type components = {
             ai_primitives_llm: (components["schemas"]["HasuraLlmConfigV1"] | components["schemas"]["ApiOpenAIConfig"] | components["schemas"]["ApiAnthropicConfig"]) | null;
             ddn: components["schemas"]["DdnConfig"] | null;
             /** Artifacts */
-            artifacts: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
+            artifacts: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"] | components["schemas"]["AutomationArtifact"])[];
+        };
+        /** ExecuteRequestV2 */
+        ExecuteRequestV2: {
+            /**
+             * Version
+             * @constant
+             */
+            version: "v2";
+            /** Code */
+            code: string;
+            ddn?: components["schemas"]["DdnConfigV2"] | null;
+            /** Artifacts */
+            artifacts?: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"] | components["schemas"]["AutomationArtifact"])[];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -194,7 +260,7 @@ export type components = {
             /** Accessed Artifact Ids */
             accessed_artifact_ids: string[];
             /** Modified Artifacts */
-            modified_artifacts: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
+            modified_artifacts: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"] | components["schemas"]["AutomationArtifact"])[];
             /** Llm Usages */
             llm_usages: components["schemas"]["LlmUsage"][];
         };
@@ -203,7 +269,7 @@ export type components = {
             /** Stream */
             stream: boolean;
             /** Artifacts */
-            artifacts?: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
+            artifacts?: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"] | components["schemas"]["AutomationArtifact"])[];
             /**
              * Timezone
              * @description An IANA timezone used to interpret queries that implicitly require timezones
@@ -234,7 +300,7 @@ export type components = {
             /** Stream */
             stream: boolean;
             /** Artifacts */
-            artifacts?: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
+            artifacts?: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"] | components["schemas"]["AutomationArtifact"])[];
             /**
              * Timezone
              * @description An IANA timezone used to interpret queries that implicitly require timezones
@@ -262,7 +328,7 @@ export type components = {
              * Modified Artifacts
              * @description List of artifacts created or updated in this request. May contain duplicate artifact identifiers.
              */
-            modified_artifacts: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"])[];
+            modified_artifacts: (components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"] | components["schemas"]["AutomationArtifact"])[];
         };
         /** TableArtifact */
         TableArtifact: {
@@ -343,7 +409,7 @@ export type components = {
              */
             type: "artifact_update_chunk";
             /** Artifact */
-            artifact: components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"];
+            artifact: components["schemas"]["TextArtifact"] | components["schemas"]["TableArtifact"] | components["schemas"]["VisualizationArtifact"] | components["schemas"]["AutomationArtifact"];
         };
         /** AssistantActionChunk */
         AssistantActionChunk: {
@@ -362,6 +428,11 @@ export type components = {
              * @default null
              */
             code: string | null;
+            /**
+             * Automation Code
+             * @default null
+             */
+            automation_code: string | null;
             /**
              * Code Output
              * @default null
@@ -415,9 +486,12 @@ export type ApiOpenAiConfig = components['schemas']['ApiOpenAIConfig'];
 export type ApiThreadAssistantAction = components['schemas']['ApiThreadAssistantAction'];
 export type ApiThreadInteraction = components['schemas']['ApiThreadInteraction'];
 export type ApiThreadUserMessage = components['schemas']['ApiThreadUserMessage'];
+export type AutomationArtifact = components['schemas']['AutomationArtifact'];
+export type AutomationArtifactData = components['schemas']['AutomationArtifactData'];
 export type DdnConfig = components['schemas']['DdnConfig'];
 export type DdnConfigV2 = components['schemas']['DdnConfigV2'];
-export type ExecuteRequest = components['schemas']['ExecuteRequest'];
+export type ExecuteRequestV1 = components['schemas']['ExecuteRequestV1'];
+export type ExecuteRequestV2 = components['schemas']['ExecuteRequestV2'];
 export type HttpValidationError = components['schemas']['HTTPValidationError'];
 export type HasuraLlmConfigV1 = components['schemas']['HasuraLlmConfigV1'];
 export type LlmUsage = components['schemas']['LlmUsage'];
@@ -446,7 +520,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["ExecuteRequest"];
+                "application/json": components["schemas"]["ExecuteRequestV1"] | components["schemas"]["ExecuteRequestV2"];
             };
         };
         responses: {
@@ -490,19 +564,19 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QueryResponse"];
-                    /** @example data: {"message":"Let me try to store an artifact","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                    /** @example data: {"message":"Let me try to store an artifact","plan":null,"code":null,"automation_code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
                      *
-                     *     data: {"message":null,"plan":"- Store an artifact with sample data","code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                     *     data: {"message":null,"plan":"- Store an artifact with sample data","code":null,"automation_code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
                      *
-                     *     data: {"message":null,"plan":null,"code":"executor.store_artitfact('test', 'Test artifact', 'table', [{'foo':'bar'}])","code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
+                     *     data: {"message":null,"plan":null,"code":"executor.store_artitfact('test', 'Test artifact', 'table', [{'foo':'bar'}])","automation_code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":0}
                      *
-                     *     data: {"message":null,"plan":null,"code":null,"code_output":"Artifact stored","code_error":null,"type":"assistant_action_chunk","index":0}
+                     *     data: {"message":null,"plan":null,"code":null,"automation_code":null,"code_output":"Artifact stored","code_error":null,"type":"assistant_action_chunk","index":0}
                      *
                      *     data: {"type":"artifact_update_chunk","artifact":{"identifier":"test","title":"Test Artifact","artifact_type":"table","data":[{"foo":"bar"}]}}
                      *
-                     *     data: {"message":"Your artifact is <artifact","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
+                     *     data: {"message":"Your artifact is <artifact","plan":null,"code":null,"automation_code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
                      *
-                     *     data: {"message":" identifier='test'/>","plan":null,"code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
+                     *     data: {"message":" identifier='test'/>","plan":null,"code":null,"automation_code":null,"code_output":null,"code_error":null,"type":"assistant_action_chunk","index":1}
                      *
                      *     data: {"type":"thread_metadata_chunk","thread_id":"00000000-0000-0000-0000-000000000000"}
                      *

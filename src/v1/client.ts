@@ -1,8 +1,7 @@
-import type { IncomingHttpHeaders } from 'node:http';
 import { type Span, SpanKind, trace } from '@opentelemetry/api';
 import type {
   DdnConfig,
-  ExecuteRequest,
+  ExecuteRequestV1,
   PromptQlExecutionResult,
   QueryRequestV1,
   QueryResponse,
@@ -11,11 +10,10 @@ import type {
 import {
   DEFAULT_PROMPTQL_BASE_URL,
   type FetchOptions,
-  type LlmConfigV1,
   PromptQLError,
 } from '../types';
+import { readQueryStream } from '../utils/query-stream';
 import {
-  DATA_CHUNK_PREFIX,
   isHttpProtocol,
   joinUrlPaths,
   validateResponse,
@@ -25,7 +23,7 @@ import {
 import type {
   PromptQLClientConfigV1,
   PromptQLClientV1,
-  PromptQLExecuteRequest,
+  PromptQLExecuteRequestV1,
   PromptQLQueryRequestV1,
 } from './types';
 
@@ -179,8 +177,8 @@ export const createPromptQLClientV1 = (
       },
     );
 
-  const _executeProgram = async (
-    { ddn, ...others }: PromptQLExecuteRequest,
+  const executeProgram = async (
+    { ddn, ai_primitives_llm, artifacts, ...others }: PromptQLExecuteRequestV1,
     executeOptions?: FetchOptions,
   ): Promise<PromptQlExecutionResult> =>
     withActiveSpan(
@@ -193,20 +191,53 @@ export const createPromptQLClientV1 = (
 
         const ddnConfig = await buildDdnConfigV1(ddn, options.ddn);
 
-        return executeProgram(
-          {
+        const aiPrimitivesLlm = ai_primitives_llm ??
+          options.aiPrimitivesLlm ?? {
+            provider: 'hasura',
+          };
+
+        span.setAttribute(
+          'promptql.request.artifacts_length',
+          artifacts?.length ?? 0,
+        );
+        span.setAttribute('promptql.request.ddn_url', ddn?.url ?? '');
+
+        if (ai_primitives_llm?.provider) {
+          span.setAttribute(
+            'promptql.request.ai_primitives_llm_provider',
+            ai_primitives_llm.provider,
+          );
+        }
+
+        const url = new URL(baseUrl.toString());
+        url.pathname = joinUrlPaths(url.pathname, 'execute_program');
+
+        return fetchFn(url, {
+          ...executeOptions,
+          headers: {
+            ...clientHeaders,
+            ...executeOptions?.headers,
+            'Content-Type': 'application/json',
+          },
+          method: 'POST',
+          body: JSON.stringify({
             ...others,
             ddn: ddnConfig,
-          },
-          {
-            span,
-            baseUrl: baseUrl.toString(),
-            headers: clientHeaders,
-            fetch: fetchFn,
-            aiPrimitivesLlm: options.aiPrimitivesLlm,
-          },
-          executeOptions,
-        );
+            ai_primitives_llm: aiPrimitivesLlm,
+            artifacts: artifacts ?? [],
+          } as ExecuteRequestV1),
+        })
+          .then(validateResponseAndDecodeJson<PromptQlExecutionResult>)
+          .then((data) => {
+            span.setAttributes({
+              'promptql.response.accessed_artifact_ids':
+                data.accessed_artifact_ids,
+              'promptql.response.modified_artifacts_length':
+                data.modified_artifacts.length,
+            });
+
+            return data;
+          });
       },
       {
         kind: SpanKind.CLIENT,
@@ -216,168 +247,14 @@ export const createPromptQLClientV1 = (
   return {
     query,
     queryStream,
-    executeProgram: _executeProgram,
+    executeProgram,
   };
-};
-
-export const executeProgram = async (
-  { ai_primitives_llm, artifacts, ...others }: PromptQLExecuteRequest,
-  options: {
-    span: Span;
-    baseUrl: string;
-    headers: IncomingHttpHeaders;
-    aiPrimitivesLlm?: LlmConfigV1;
-    fetch: (
-      input: string | URL | Request,
-      init?: RequestInit,
-    ) => Promise<Response>;
-  },
-  executeOptions?: FetchOptions,
-): Promise<PromptQlExecutionResult> => {
-  const span = options.span;
-  const aiPrimitivesLlm = ai_primitives_llm ??
-    options.aiPrimitivesLlm ?? {
-      provider: 'hasura',
-    };
-
-  span.setAttribute(
-    'promptql.request.artifacts_length',
-    artifacts?.length ?? 0,
-  );
-  span.setAttribute('promptql.request.ddn_url', others.ddn?.url ?? '');
-
-  if (ai_primitives_llm?.provider) {
-    span.setAttribute(
-      'promptql.request.ai_primitives_llm_provider',
-      ai_primitives_llm.provider,
-    );
-  }
-
-  const url = new URL(options.baseUrl);
-  url.pathname = joinUrlPaths(url.pathname, 'execute_program');
-
-  return options
-    .fetch(url, {
-      ...executeOptions,
-      headers: {
-        ...options.headers,
-        ...executeOptions?.headers,
-        'Content-Type': 'application/json',
-      },
-      method: 'POST',
-      body: JSON.stringify({
-        ...others,
-        ai_primitives_llm: aiPrimitivesLlm,
-        artifacts: artifacts ?? [],
-      } as ExecuteRequest),
-    })
-    .then(validateResponseAndDecodeJson<PromptQlExecutionResult>)
-    .then((data) => {
-      span.setAttributes({
-        'promptql.response.accessed_artifact_ids': data.accessed_artifact_ids,
-        'promptql.response.modified_artifacts_length':
-          data.modified_artifacts.length,
-      });
-
-      return data;
-    });
-};
-
-export const readQueryStream = async (
-  response: Response,
-  callback?: (data: QueryResponseChunk) => void | Promise<void>,
-  signal?: AbortSignal | null | undefined,
-): Promise<number> => {
-  if (typeof callback !== 'function' || !response.body) {
-    return 0;
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder('utf-8');
-  let incompleteChunk = '';
-  let responseSize = 0;
-
-  const handleChunk = async (text: string): Promise<void> => {
-    if (!text && !incompleteChunk) {
-      return;
-    }
-
-    let tempText = incompleteChunk + text;
-    incompleteChunk = '';
-
-    if (tempText.startsWith(DATA_CHUNK_PREFIX)) {
-      tempText = text.substring(DATA_CHUNK_PREFIX.length);
-    }
-
-    // split chunks to parts and try to decode one by one.
-    const rawChunks = tempText.split(DATA_CHUNK_PREFIX);
-
-    for (let i = 0; i < rawChunks.length; i++) {
-      const chunk = rawChunks[i]!;
-      const line = chunk.trim();
-
-      // cache the incomplete chunk to parse later.
-      if (line[line.length - 1] !== '}') {
-        incompleteChunk += i > 0 ? `data: ${chunk}` : chunk;
-        return;
-      }
-
-      let data: QueryResponseChunk | undefined;
-
-      try {
-        data = JSON.parse(line);
-      } catch (err) {
-        incompleteChunk += i > 0 ? `data: ${line}` : line;
-      }
-
-      if (data) {
-        await callback(data);
-      }
-    }
-  };
-
-  while (true) {
-    if (signal?.aborted) {
-      await response.body.cancel();
-      break;
-    }
-
-    try {
-      const { value, done } = await reader.read();
-      if (done) {
-        break;
-      }
-
-      const text = decoder.decode(value);
-      if (!text) {
-        continue;
-      }
-
-      responseSize += text.length;
-      await handleChunk(text);
-    } catch (err) {
-      await response.body.cancel();
-
-      throw err;
-    }
-  }
-
-  if (incompleteChunk) {
-    await handleChunk('');
-  }
-
-  return responseSize;
 };
 
 /**
  * Build the DDN config v1 from the request and default input.
- *
- * @async
- * @param {?(Partial<DdnConfig> | null)} [ddn]
- * @param {?(DdnConfig | (() => DdnConfig | Promise<DdnConfig>))} [defaultDdn]
- * @returns {Promise<DdnConfig>}
  */
-export const buildDdnConfigV1 = async (
+const buildDdnConfigV1 = async (
   ddn?: Partial<DdnConfig> | null,
   defaultDdn?: DdnConfig | (() => DdnConfig | Promise<DdnConfig>),
 ): Promise<DdnConfig> => {

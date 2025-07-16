@@ -1,6 +1,7 @@
 import type {
   ApiAnthropicConfig,
   ApiOpenAiConfig,
+  AutomationArtifact,
   HasuraLlmConfigV1,
   TableArtifact,
   TextArtifact,
@@ -20,15 +21,17 @@ export type LlmConfigV1 =
  * PromptQL artifacts are stores of data and can be referenced from PromptQL programs. PromptQL programs can create artifacts.
  *
  * @export
- * @typedef {Artifact}
  */
-export type Artifact = TextArtifact | TableArtifact | VisualizationArtifact;
+export type Artifact =
+  | TextArtifact
+  | TableArtifact
+  | VisualizationArtifact
+  | AutomationArtifact;
 
 /**
  * Optional fetch options to the PromptQL API.
  *
  * @export
- * @typedef {FetchOptions}
  */
 export type FetchOptions = Omit<RequestInit, 'method' | 'body'>;
 
@@ -37,7 +40,6 @@ export type FetchOptions = Omit<RequestInit, 'method' | 'body'>;
  *
  * @export
  * @class PromptQLError
- * @typedef {PromptQLError}
  * @extends {Error}
  */
 export class PromptQLError extends Error {

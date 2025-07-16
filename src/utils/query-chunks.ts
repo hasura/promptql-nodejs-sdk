@@ -12,7 +12,6 @@ import type { Artifact } from '../types';
  * The data of query chunks
  *
  * @export
- * @typedef {QueryChunksData}
  */
 export type QueryChunksData = {
   thread_id?: string;
@@ -25,7 +24,6 @@ export type QueryChunksData = {
  * A convenient helper type to concat and merge query response chunks to a final query response.
  *
  * @export
- * @typedef {QueryChunks}
  */
 export type QueryChunks = {
   getThreadId: () => string | null;
