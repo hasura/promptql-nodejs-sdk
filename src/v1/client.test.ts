@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { createPromptQLClient } from './client';
-import { createQueryChunks } from './query-chunks';
-import type { Artifact } from './types';
+import type { Artifact } from '../types';
+import { createQueryChunks } from '../utils/query-chunks';
+import { createPromptQLClientV1 } from './client';
 
-describe('PromptQLClient', () => {
+describe('PromptQLClientV1', () => {
   const client = createTestClient();
   const expectedArtifact = [
     {
@@ -123,7 +123,7 @@ const createTestClient = () => {
   const ddnBaseUrl = getEnv('HASURA_DDN_BASE_URL');
   const ddnAuthToken = getEnv('DDN_AUTH_TOKEN');
 
-  return createPromptQLClient({
+  return createPromptQLClientV1({
     apiKey,
     ddn: {
       url: ddnBaseUrl,

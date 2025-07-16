@@ -16,19 +16,20 @@ npm install @hasura/promptql
 
 - If you are new with PromptQL, follow [the quickstart guide of PromptQL](https://hasura.io/docs/promptql/quickstart/) to create a project.
 - Create a PromptQL API Key in project settings tab on [https://console.hasura.io](https://console.hasura.io).
-- Your Project API endpoint and security headers.
+- Security headers and your Project API endpoint (version 1) or build version (version 2).
 
 ### Use PromptQL SDK
+
+#### Create client
 
 Create the PromptQL client with required configurations:
 
 ```ts
-import { createPromptQLClient } from '@hasura/promptql';
+import { createPromptQLClientV2 } from '@hasura/promptql';
 
-const client = createPromptQLClient({
+const client = createPromptQLClientV2({
     apiKey: '<your-promptql-api-key>',
     ddn: {
-        url: '<your-project-endpoint>',
         headers: {
             'Authorization': '<credential>'
         }
@@ -36,13 +37,16 @@ const client = createPromptQLClient({
     // You can define a lazy function for the ddn options.
     //
     // ddn: () => {{ 
-    //     url: '<your-project-endpoint>',
     //     headers: {
     //         'Authorization': '<credential>'
     //     }
     // }}  
 });
+```
 
+#### Run a Query
+
+```ts
 const runQuery = (text: string) => {
     return client.query({
         artifacts: [],
@@ -70,27 +74,83 @@ runQuery('what can you do?').then((response) => {
 
 ## Reference
 
-### Natural Language 
+### Version 2
 
-The [Natural Language Query API](https://hasura.io/docs/promptql/promptql-apis/natural-language-api/) allows you to interact with PromptQL directly, sending messages and receiving responses.
+#### Natural Language
 
-#### Non-Streaming
+The API version 2 simplifies request parameters: 
+- The DDN URL is replaced by `build_version`. 
+- `llm`, `ai_primitives_llm`, and `system_instructions` are removed. 
+
+To use the API v2, you need to create a PromptQL Client v2:
+
+```ts
+import { createPromptQLClientV2 } from '@hasura/promptql';
+
+const client = createPromptQLClientV2({
+    apiKey: '<your-promptql-api-key>',
+    ddn: {
+        // build_version: '<your-build-version>',
+        headers: {
+            'Authorization': '<credential>'
+        }
+    },
+});
+```
+
+##### Non-Streaming
 
 ```ts
 function query(
-    body: PromptQLQueryRequest, 
+    body: PromptQLQueryRequestV2,
     queryOptions?: FetchOptions
 ) => Promise<QueryResponse>
 ```
 
-#### Streaming
+##### Streaming
+
+```ts
+function queryStream(
+    body: PromptQLQueryRequestV2, 
+    callback?: (data: QueryResponseChunk) => void | Promise<void>, 
+    queryOptions?: FetchOptions
+) Promise<Response>;
+```
+
+#### Execute Program
+
+Execute a PromptQL program with your data.
+
+```ts
+function executeProgram: (
+    body: PromptQLExecuteRequestV2,
+    executeOptions?: FetchOptions,
+) => Promise<PromptQlExecutionResult>
+```
+
+### Version 1
+
+#### Natural Language
+
+The [Natural Language Query API](https://hasura.io/docs/promptql/promptql-apis/natural-language-api/) allows you to interact with PromptQL directly, sending messages and receiving responses.
+
+##### Non-Streaming
+
+```ts
+function query(
+    body: PromptQLQueryRequestV1,
+    queryOptions?: FetchOptions
+) => Promise<QueryResponse>
+```
+
+##### Streaming
 
 The streaming response sends chunks of data in Server-Sent Events (SSE) format.
 If the callback isn't set the client returns the raw response and you need to handle the response manually.
 
 ```ts
 function queryStream(
-    body: PromptQLQueryRequest, 
+    body: PromptQLQueryRequestV1, 
     callback?: (data: QueryResponseChunk) => void | Promise<void>, 
     queryOptions?: FetchOptions
 ) Promise<Response>;
@@ -114,13 +174,15 @@ client
 );
 ```
 
-### Execute Program
+#### Execute Program
 
 Execute a PromptQL program with your data.
 
 ```ts
-function executeProgram(
-    body: PromptQLExecuteRequest, executeOptions?: FetchOptions) Promise<PromptQlExecutionResult>;
+function executeProgram: (
+    body: PromptQLExecuteRequestV1,
+    executeOptions?: FetchOptions,
+) => Promise<PromptQlExecutionResult>
 ```
 
 ## Development

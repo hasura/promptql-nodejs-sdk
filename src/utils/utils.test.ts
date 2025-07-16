@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest';
-import { DATA_CHUNK_PREFIX } from './utils';
+import { DATA_CHUNK_PREFIX } from './query-stream';
 
 test('decodeJson', (t) => {
   const fixtures: { input: string; expected: unknown }[] = [
